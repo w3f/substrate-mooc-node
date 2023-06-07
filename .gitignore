@@ -9,3 +9,6 @@
 # direnv files
 .envrc
 .direnv
+
+# misc
+/.vscode/settings.json
