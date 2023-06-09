@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_support::traits::Currency;
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://docs.substrate.io/reference/frame-pallets/>
@@ -13,16 +14,32 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+
+type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
 pub mod weights;
 pub use weights::*;
 
-#[frame_support::pallet]
+/// GOALS: 
+/// 
+/// 1. Register user who owns at least 10 DOT, ERROR if not
+/// 2. Generate random hex values for each side of gradient 
+/// 3. Store metadata about a user, including a name, bio, and their profile picture
+/// 4. Store a like and dislike object in association to an account
+/// 5. Have a list of friends for each account
+/// 6. Store total amount of profiles on a network
+
+
+/// NOTE: Using dev mode!
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use super::*;
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, ensure, traits::{ReservableCurrency, LockableCurrency}, Blake2_128Concat};
+	use frame_system::{pallet_prelude::{*, OriginFor}, ensure_signed};
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -32,6 +49,25 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
+		/// Using the pallet_balances exposed 'Currency' trait to fetch user balance info
+		type Currency: ReservableCurrency<Self::AccountId> + LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		/// Minimum amount to lock as part of being in the network
+		#[pallet::constant]
+		type MinimumLockableAmount: Get<BalanceOf<Self>>;
+		/// Maximum amount of characters for a bio
+		type MaxBioLength: Get<u32>;
+		/// Maximum amount of characters for a name
+		type MaxNameLength: Get<u32>;
+	}
+
+	/// User Info
+	#[derive(Debug, Encode, Decode, TypeInfo, PartialEq, Clone)]
+	#[scale_info(skip_type_params(T))]
+	pub struct UserMetadata<T: Config> {
+		pub name: BoundedVec<u8, T::MaxNameLength>,
+		pub bio: BoundedVec<u8, T::MaxBioLength>,
+		pub profile_gradient: (u32, u32),
+		pub account_id: T::AccountId
 	}
 
 	// The pallet's runtime storage items.
@@ -40,69 +76,58 @@ pub mod pallet {
 	#[pallet::getter(fn something)]
 	// Learn more about declaring storage items:
 	// https://docs.substrate.io/main-docs/build/runtime-storage/#declaring-storage-items
-	pub type Something<T> = StorageValue<_, u32>;
+	pub type TotalRegistered<T: Config> = StorageValue<_, u32>;
+
+	#[pallet::storage]
+	pub type RegisteredUsers<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, UserMetadata<T>, OptionQuery>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/main-docs/build/events-errors/
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event documentation should end with an array that provides descriptive names for event
-		/// parameters. [something, who]
-		SomethingStored { something: u32, who: T::AccountId },
+		Registered { id: T::AccountId }
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Error names should be descriptive.
-		NoneValue,
-		/// Errors should have helpful documentation associated with them.
-		StorageOverflow,
+		/// Balance does not meet the minimum required amount
+		InvalidBalance,
+		/// Name exceeds MaxNameLength
+		NameTooLong,
+		/// Bio exceeds MaxBioLength
+		BioTooLong,
 	}
 
-	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	// These functions materialize as "extrinsics", which are often compared to transactions.
-	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a singles value as a parameter, writes the value to
-		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
+
+		/// Registers a user to the network
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::do_something())]
-		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://docs.substrate.io/main-docs/build/origins/
-			let who = ensure_signed(origin)?;
+		pub fn register(origin: OriginFor<T>) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+			ensure!(Self::check_balance(signer), Error::<T>::InvalidBalance);
 
-			// Update storage.
-			<Something<T>>::put(something);
-
-			// Emit an event.
-			Self::deposit_event(Event::SomethingStored { something, who });
-			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
+	}
 
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::cause_error())]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+	impl <T: Config> Pallet<T> {
 
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => return Err(Error::<T>::NoneValue.into()),
-				Some(old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(new);
-					Ok(())
-				},
-			}
+		/// Generates hex values for a gradient profile picture
+		fn generate_hex_values() -> (u32, u32) {
+			// TODO: randomly generate
+			let values = (00000, 00000);
+			values
 		}
+
+		/// Checks that the balance is more than or equal to ten
+		/// Err if not
+		fn check_balance(account_id: T::AccountId) -> bool {
+			// TODO: Check balance, lock that amount!
+			true
+		}
+
 	}
 }
