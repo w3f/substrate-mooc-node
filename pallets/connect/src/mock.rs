@@ -1,6 +1,7 @@
-use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
-use sp_core::H256;
+use crate as pallet_connect;
+
+use frame_support::{traits::{ConstU16, ConstU64}, parameter_types};
+use sp_core::{H256, ConstU32, ConstU128};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -8,6 +9,7 @@ use sp_runtime::{
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+type Balance = u128;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -16,8 +18,9 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system,
-		TemplateModule: pallet_template,
+		System: frame_system::{Pallet, Call, Config, Event<T>},
+		Balances: pallet_balances,
+		Connect: pallet_connect,
 	}
 );
 
@@ -39,7 +42,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -48,9 +51,36 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_template::Config for Test {
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+	pub const MaxLocks: u32 = 10;
+	pub const MaxFreezes: u32 = 10;
+	pub const MaxHolds: u32 = 10;
+
+}
+impl pallet_balances::Config for Test {
+	type Balance = u128;
+	type DustRemoval = ();
+	type RuntimeEvent = RuntimeEvent;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type HoldIdentifier = ();
+	type FreezeIdentifier = ();
+	type MaxHolds = MaxHolds;
+	type MaxFreezes = MaxFreezes;
+}
+
+impl pallet_connect::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type Currency = Balances;
+	type MaxBioLength = ConstU32<100>;
+	type MinimumLockableAmount = ConstU128<10>;
+	type MaxNameLength = ConstU32<100>;
 }
 
 // Build genesis storage according to the mock runtime.
