@@ -1,7 +1,10 @@
 use crate as pallet_connect;
 
-use frame_support::{traits::{ConstU16, ConstU64}, parameter_types};
-use sp_core::{H256, ConstU32, ConstU128};
+use frame_support::{
+	parameter_types,
+	traits::{ConstU16, ConstU64},
+};
+use sp_core::{ConstU128, ConstU32, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
