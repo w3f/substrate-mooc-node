@@ -114,6 +114,8 @@ pub mod pallet {
 		NameInUse,
 		/// Account ID is already registered
 		AccountIdAlreadyRegistered,
+		/// Integer overflow
+		IntegerOverflow
 	}
 
 	#[pallet::call]
@@ -166,9 +168,12 @@ pub mod pallet {
 				WithdrawReasons::RESERVE,
 			);
 
-			// 6. Store the user and add to existing names
+			// 6. Store the user, add to existing names, and update total amount of users
 			<RegisteredUsers<T>>::insert(&sender, user_metadata);
 			<Names<T>>::insert(&name_bounded, sender.clone());
+			let total_registered = <TotalRegistered<T>>::get().unwrap_or_default();
+
+			<TotalRegistered<T>>::put(total_registered.checked_add(1).ok_or(Error::<T>::IntegerOverflow)?);
 
 			// 7. Emit an event
 			Self::deposit_event(Event::Registered { id: sender });
@@ -181,9 +186,10 @@ pub mod pallet {
 		/// Generates hex values for a gradient profile picture
 		fn generate_hex_values(random_value: T::Hash) -> Gradient {
 			let hex = hex::encode(random_value);
-			// SCALE encode slice
-			let right = hex[..6].encode();
-			let left = hex[6..12].encode();
+			// SCALE encode each hex portion. We don't *really* need to hex-encode here,
+			// but it's useful how an external crate can be used :)
+			let right = hex[..2].encode();
+			let left = hex[4..6].encode();
 			(right, left)
 		}
 	}
