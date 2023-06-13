@@ -126,7 +126,7 @@ pub mod pallet {
 
 			// Before proceeding - we have to make sure the *free* balance of a user is enough to lock up!
 			// Otherwise, we halt this dispatchable with an error.
-			ensure!(balance < T::MinimumLockableAmount::get(), Error::<T>::LowBalance);
+			ensure!(balance >= T::MinimumLockableAmount::get(), Error::<T>::LowBalance);
 
 			// 1. Craft the user metadata out of the given parameters from `register`.
 			// Keep in mind we have to cast these to `BoundedVec` using the limits we have defined
