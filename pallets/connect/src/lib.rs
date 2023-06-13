@@ -1,8 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::traits::{Currency, LockIdentifier};
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
+
 /// <https://docs.substrate.io/reference/frame-pallets/>
 pub use pallet::*;
 use sp_std::prelude::*;
@@ -37,7 +36,6 @@ pub mod pallet {
 		Blake2_128Concat,
 	};
 	use frame_system::pallet_prelude::*;
-	use scale_info::prelude::*;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]

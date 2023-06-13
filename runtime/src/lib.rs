@@ -267,10 +267,21 @@ impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
+/// Configure an *INSECURE* source of randomness, since we don't have BABE implemented
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
+
+parameter_types! {
+	pub MinimumLockableAmount: Balance = 10;
+}
 /// Configure the pallet-connect in pallets/template.
 impl pallet_connect::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_connect::weights::SubstrateWeight<Runtime>;
+	type Currency = Balances;
+	type MaxBioLength = ConstU32<100>;
+	type MinimumLockableAmount = MinimumLockableAmount;
+	type MaxNameLength = ConstU32<100>;
+	type Randomness = InsecureRandomness;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -282,6 +293,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
+		InsecureRandomness: pallet_insecure_randomness_collective_flip,
 		Timestamp: pallet_timestamp,
 		Aura: pallet_aura,
 		Grandpa: pallet_grandpa,
@@ -289,7 +301,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-connect in the runtime.
-		Connect : pallet_connect,
+		Connect: pallet_connect,
 	}
 );
 
