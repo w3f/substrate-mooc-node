@@ -1,3 +1,28 @@
+//! # Connect Pallet
+//!
+//! For mostly learning purposes!
+//!
+//! A sybil-resistant method for a metadata storage system which could be the basis for any social network.
+//!
+//! - \[`Config`]
+//! - \[`Call`]
+//! - \[`Pallet`]
+//!
+//! ## Overview
+//!
+//! This pallet aims to utilize most basic/common features of FRAME and Substrate in order to demonstrate
+//! an application which takes advantage of common traits (Currency, Randomness) in a practical setting.
+//!
+//! This pallet could be extended to include more aspects of game theory to further prevent adversasial actions,
+//! or simply as a basis for a basic social network.
+//!
+//! ## Interface
+//!
+//! ### Dispatchable Functions
+//!
+//! - `register` - Registers user metadata in association to the senders account id.
+//!
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::traits::{Currency, LockIdentifier};
@@ -15,17 +40,20 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+// Type which shortens the access to the Curreency trait from the Balances pallet.
 type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-const LOCK_ID: LockIdentifier = *b"MINDEPOS";
-// Hex values
+// Lock id for locking the minimum lockable amount.
+const LOCK_ID: LockIdentifier = *b"LOCKEDUP";
+
+// Hex values for the gradient - right, left.
 type Gradient = (Vec<u8>, Vec<u8>);
 
 pub mod weights;
 pub use weights::*;
 
-/// NOTE: Using dev mode!
+/// Note: Using dev mode! (#[frame_support::pallet(dev_mode)])
 #[frame_support::pallet(dev_mode)]
 pub mod pallet {
 	use super::*;
@@ -68,17 +96,21 @@ pub mod pallet {
 	#[derive(Debug, Encode, Decode, TypeInfo, PartialEq, Clone)]
 	#[scale_info(skip_type_params(T))]
 	pub struct UserMetadata<T: Config> {
+		/// The name of the user, bounded in total length.
 		pub name: BoundedVec<u8, T::MaxNameLength>,
+		/// The bio of the user, bounded in total length.
 		pub bio: BoundedVec<u8, T::MaxBioLength>,
+		/// The user's color hex values for a gradient profile picture, from right to left.
 		pub profile_gradient: Gradient,
+		/// The associated account_id of the sender at the time of registration.
 		pub account_id: T::AccountId,
 	}
 
-	/// Total amount of registered users
+	/// Total amount of registered users.
 	#[pallet::storage]
 	pub type TotalRegistered<T: Config> = StorageValue<_, u32>;
 
-	/// List of names by associated by account id.
+	/// A mapping that declares names that are in use by the pallet.
 	#[pallet::storage]
 	pub type Names<T: Config> = StorageMap<
 		_,
@@ -115,12 +147,14 @@ pub mod pallet {
 		/// Account ID is already registered
 		AccountIdAlreadyRegistered,
 		/// Integer overflow
-		IntegerOverflow
+		IntegerOverflow,
 	}
 
+	/// The extrinsics, or dispatchable functions, for this pallet.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Registers a user to the network
+		/// Registers a user to the network. It requires the balance of the sender to have an amount which is greater than, or equal to MinimumLockableAmount.
+		/// Locks MinimumLockableAmount as part of the registration process.
 		#[pallet::call_index(0)]
 		pub fn register(origin: OriginFor<T>, name: Vec<u8>, bio: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -160,7 +194,7 @@ pub mod pallet {
 				account_id: sender.clone(),
 			};
 
-			// 5. Lock the minimum deposit.  This account will now have this amount locked until they 'de-register'
+			// 5. Lock the minimum deposit.  This account will now have this amount locked until they 'de-register'.
 			T::Currency::set_lock(
 				LOCK_ID,
 				&sender,
@@ -171,23 +205,33 @@ pub mod pallet {
 			// 6. Store the user, add to existing names, and update total amount of users
 			<RegisteredUsers<T>>::insert(&sender, user_metadata);
 			<Names<T>>::insert(&name_bounded, sender.clone());
+
+			// Note the use of 'unwrap_or_default' - this is better than just a plain 'unwrap()'
+			// The default for 'u32' is 0, meaning an 'unwrap_or(0)' could also work here!
+
 			let total_registered = <TotalRegistered<T>>::get().unwrap_or_default();
 
-			<TotalRegistered<T>>::put(total_registered.checked_add(1).ok_or(Error::<T>::IntegerOverflow)?);
+			// The use of checked_add() ensures 'safe math' is taking place.
+			// Since we never want panic within a runtime, we have to ensure all *possible* errors can be caught.
 
-			// 7. Emit an event
+			<TotalRegistered<T>>::put(
+				total_registered.checked_add(1).ok_or(Error::<T>::IntegerOverflow)?,
+			);
+
+			// 7. Emit an event to indicate a new user was added to the network
 			Self::deposit_event(Event::Registered { id: sender });
 
 			Ok(())
 		}
 	}
 
+	/// Note how you can also simply utilize the Pallet struct as per normal to declare helper functions, or anything helpful in the context of the pallet.
 	impl<T: Config> Pallet<T> {
 		/// Generates hex values for a gradient profile picture
 		fn generate_hex_values(random_value: T::Hash) -> Gradient {
 			let hex = hex::encode(random_value);
 			// SCALE encode each hex portion. We don't *really* need to hex-encode here,
-			// but it's useful how an external crate can be used :)
+			// you could just get the SCALE bytes themselves, but it's useful how an external crate can be used :)
 			let right = hex[..2].encode();
 			let left = hex[4..6].encode();
 			(right, left)
