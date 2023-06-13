@@ -10,6 +10,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
+use frame_support_test::TestRandomness;
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
@@ -84,6 +86,7 @@ impl pallet_connect::Config for Test {
 	type MaxBioLength = ConstU32<100>;
 	type MinimumLockableAmount = ConstU128<10>;
 	type MaxNameLength = ConstU32<100>;
+	type Randomness = TestRandomness<Self>;
 }
 
 // Build genesis storage according to the mock runtime.
