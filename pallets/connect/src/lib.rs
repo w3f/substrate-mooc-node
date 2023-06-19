@@ -2,7 +2,8 @@
 //!
 //! For mostly learning purposes!
 //!
-//! A sybil-resistant method for a metadata storage system which could be the basis for any social network.
+//! A sybil-resistant method for a metadata storage system which could be the basis for any social
+//! network.
 //!
 //! - \[`Config`]
 //! - \[`Call`]
@@ -10,18 +11,18 @@
 //!
 //! ## Overview
 //!
-//! This pallet aims to utilize most basic/common features of FRAME and Substrate in order to demonstrate
-//! an application which takes advantage of common traits (Currency, Randomness) in a practical setting.
+//! This pallet aims to utilize most basic/common features of FRAME and Substrate in order to
+//! demonstrate an application which takes advantage of common traits (Currency, Randomness) in a
+//! practical setting.
 //!
-//! This pallet could be extended to include more aspects of game theory to further prevent adversasial actions,
-//! or simply as a basis for a basic social network.
+//! This pallet could be extended to include more aspects of game theory to further prevent
+//! adversasial actions, or simply as a basis for a basic social network.
 //!
 //! ## Interface
 //!
 //! ### Dispatchable Functions
 //!
 //! - `register` - Registers user metadata in association to the senders account id.
-//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -92,7 +93,8 @@ pub mod pallet {
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
-	/// User Metadata - note the traits, especially the Encode/Decode which allow for SCALE encoding to occur on this type.
+	/// User Metadata - note the traits, especially the Encode/Decode which allow for SCALE encoding
+	/// to occur on this type.
 	#[derive(Debug, Encode, Decode, TypeInfo, PartialEq, Clone)]
 	#[scale_info(skip_type_params(T))]
 	pub struct UserMetadata<T: Config> {
@@ -156,15 +158,16 @@ pub mod pallet {
 	/// The extrinsics, or dispatchable functions, for this pallet.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Registers a user to the network. It requires the balance of the sender to have an amount which is greater than, or equal to MinimumLockableAmount.
-		/// Locks MinimumLockableAmount as part of the registration process.
+		/// Registers a user to the network. It requires the balance of the sender to have an amount
+		/// which is greater than, or equal to MinimumLockableAmount. Locks MinimumLockableAmount as
+		/// part of the registration process.
 		#[pallet::call_index(0)]
 		pub fn register(origin: OriginFor<T>, name: Vec<u8>, bio: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let balance = T::Currency::free_balance(&sender);
 
-			// Before proceeding - we have to make sure the *free* balance of a user is enough to lock up!
-			// Otherwise, we halt this dispatchable with an error.
+			// Before proceeding - we have to make sure the *free* balance of a user is enough to
+			// lock up! Otherwise, we halt this dispatchable with an error.
 			ensure!(balance >= T::MinimumLockableAmount::get(), Error::<T>::LowBalance);
 
 			// 1. Craft the user metadata out of the given parameters from `register`.
@@ -185,11 +188,13 @@ pub mod pallet {
 			);
 
 			// 3. Generate our random profile picture (aka, two hex values which form a gradient)
-			// Usually, some increasing nonce is used as a seed. For simplicity, we use the account id as the seed.
+			// Usually, some increasing nonce is used as a seed. For simplicity, we use the account
+			// id as the seed.
 			let (value, _) = T::Randomness::random(&sender.encode());
 			let random_pfp = Self::generate_hex_values(value);
 
-			// 4. Construct our UserMetadata.  Ideally, we could also create an implemention to make this easier to create!
+			// 4. Construct our UserMetadata.  Ideally, we could also create an implemention to make
+			// this easier to create!
 			let user_metadata: UserMetadata<T> = UserMetadata {
 				name: name_bounded.clone(),
 				bio: bio_bounded,
@@ -197,7 +202,8 @@ pub mod pallet {
 				account_id: sender.clone(),
 			};
 
-			// 5. Lock the minimum deposit.  This account will now have this amount locked until they 'de-register'.
+			// 5. Lock the minimum deposit.  This account will now have this amount locked until
+			// they 'de-register'.
 			T::Currency::set_lock(
 				LOCK_ID,
 				&sender,
@@ -215,7 +221,8 @@ pub mod pallet {
 			let total_registered = <TotalRegistered<T>>::get().unwrap_or_default();
 
 			// The use of checked_add() ensures 'safe math' is taking place.
-			// Since we never want panic within a runtime, we have to ensure all *possible* errors can be caught.
+			// Since we never want panic within a runtime, we have to ensure all *possible* errors
+			// can be caught.
 
 			<TotalRegistered<T>>::put(
 				total_registered.checked_add(1).ok_or(Error::<T>::IntegerOverflow)?,
@@ -228,13 +235,15 @@ pub mod pallet {
 		}
 	}
 
-	/// Note how you can also simply utilize the Pallet struct as per normal to declare helper functions, or anything helpful in the context of the pallet.
+	/// Note how you can also simply utilize the Pallet struct as per normal to declare helper
+	/// functions, or anything helpful in the context of the pallet.
 	impl<T: Config> Pallet<T> {
 		/// Generates hex values for a gradient profile picture
 		pub fn generate_hex_values(random_value: T::Hash) -> Gradient {
 			let hex = hex::encode(random_value);
 			// SCALE encode each hex portion. We don't *really* need to hex-encode here,
-			// you could just get the SCALE bytes themselves, but it's useful how an external crate can be used :)
+			// you could just get the SCALE bytes themselves, but it's useful how an external crate
+			// can be used :)
 			let right = hex[..2].encode();
 			let left = hex[4..6].encode();
 			(right, left)
