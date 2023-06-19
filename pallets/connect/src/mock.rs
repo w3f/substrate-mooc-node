@@ -79,13 +79,17 @@ impl pallet_balances::Config for Test {
 	type MaxFreezes = MaxFreezes;
 }
 
+parameter_types! {
+	pub const MaxBioLength: u32 = 200;
+	pub const MaxNameLength: u32 = 10;
+}
 impl pallet_connect::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type Currency = Balances;
-	type MaxBioLength = ConstU32<100>;
+	type MaxBioLength = MaxBioLength;
 	type MinimumLockableAmount = ConstU128<10>;
-	type MaxNameLength = ConstU32<100>;
+	type MaxNameLength = MaxNameLength;
 	type Randomness = TestRandomness<Self>;
 }
 

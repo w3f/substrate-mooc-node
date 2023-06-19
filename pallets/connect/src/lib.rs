@@ -108,10 +108,12 @@ pub mod pallet {
 
 	/// Total amount of registered users.
 	#[pallet::storage]
+	#[pallet::getter(fn total_registered)]
 	pub type TotalRegistered<T: Config> = StorageValue<_, u32>;
 
 	/// A mapping that declares names that are in use by the pallet.
 	#[pallet::storage]
+	#[pallet::getter(fn names)]
 	pub type Names<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
@@ -122,6 +124,7 @@ pub mod pallet {
 
 	/// Registered users mapped by address
 	#[pallet::storage]
+	#[pallet::getter(fn registered_users)]
 	pub type RegisteredUsers<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, UserMetadata<T>, OptionQuery>;
 
@@ -228,7 +231,7 @@ pub mod pallet {
 	/// Note how you can also simply utilize the Pallet struct as per normal to declare helper functions, or anything helpful in the context of the pallet.
 	impl<T: Config> Pallet<T> {
 		/// Generates hex values for a gradient profile picture
-		fn generate_hex_values(random_value: T::Hash) -> Gradient {
+		pub fn generate_hex_values(random_value: T::Hash) -> Gradient {
 			let hex = hex::encode(random_value);
 			// SCALE encode each hex portion. We don't *really* need to hex-encode here,
 			// you could just get the SCALE bytes themselves, but it's useful how an external crate can be used :)
