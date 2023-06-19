@@ -4,7 +4,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU16, ConstU64},
 };
-use sp_core::{ConstU128, ConstU32, H256};
+use sp_core::{ConstU128, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
