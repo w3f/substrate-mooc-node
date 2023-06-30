@@ -41,7 +41,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-// Type which shortens the access to the Curreency trait from the Balances pallet.
+// Type which shortens the access to the Currency trait from the Balances pallet.
 type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
@@ -162,6 +162,9 @@ pub mod pallet {
 		/// which is greater than, or equal to MinimumLockableAmount. Locks MinimumLockableAmount as
 		/// part of the registration process.
 		#[pallet::call_index(0)]
+		#[pallet::weight(
+			T::WeightInfo::register_an_account() // Registers an account.
+		)]
 		pub fn register(origin: OriginFor<T>, name: Vec<u8>, bio: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			let balance = T::Currency::free_balance(&sender);

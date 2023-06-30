@@ -278,9 +278,9 @@ impl pallet_connect::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_connect::weights::SubstrateWeight<Runtime>;
 	type Currency = Balances;
-	type MaxBioLength = ConstU32<100>;
+	type MaxBioLength = ConstU32<200>;
 	type MinimumLockableAmount = MinimumLockableAmount;
-	type MaxNameLength = ConstU32<100>;
+	type MaxNameLength = ConstU32<10>;
 	type Randomness = InsecureRandomness;
 }
 
